@@ -13,7 +13,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
-  const [showForm, setShowForm] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+
+  // Form states
   const [type, setType] = useState('study');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -44,7 +46,7 @@ function App() {
       const res = await axios.get(url);
       setPosts(res.data);
     } catch (err) {
-      setError('Failed to load posts. Is the backend running?');
+      setError('Failed to load posts. Make sure backend is running.');
     } finally {
       setLoading(false);
     }
@@ -52,11 +54,11 @@ function App() {
 
   const handleAuth = async (isSignUp) => {
     if (!email || !password) {
-      alert("Please enter both an email and a password.");
+      alert('Please enter both email and password.');
       return;
     }
     try {
-      const { error } = isSignUp 
+      const { error } = isSignUp
         ? await supabase.auth.signUp({ email, password })
         : await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
@@ -82,7 +84,7 @@ function App() {
       setDescription('');
       setTags('');
       setTiming('');
-      setShowForm(false);
+      setShowModal(false);
       fetchPosts();
     } catch (err) {
       setFormError('Failed to create post.');
@@ -90,7 +92,7 @@ function App() {
   };
 
   const handleJoin = async (id) => {
-    const name = user.email.split('@')[0]; 
+    const name = user.email.split('@')[0];
     try {
       await axios.post(`${API}/posts/${id}/join`, { user_name: name });
       setJoinedIds((prev) => [...prev, id]);
@@ -115,19 +117,19 @@ function App() {
       <div className="login-container">
         <div className="login-card">
           <h1>Find Your People 🎓</h1>
-          <p className="subtitle" style={{marginBottom: '24px'}}>Student Login</p>
-          <input 
+          <p className="subtitle">Student Login</p>
+          <input
             className="auth-input"
-            placeholder="University Email" 
+            placeholder="University Email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)} 
+            onChange={(e) => setEmail(e.target.value)}
           />
-          <input 
+          <input
             className="auth-input"
-            type="password" 
-            placeholder="Password" 
+            type="password"
+            placeholder="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)} 
+            onChange={(e) => setPassword(e.target.value)}
           />
           <button className="submit-btn auth-btn" onClick={() => handleAuth(false)}>Log In</button>
           <button className="new-btn auth-btn" onClick={() => handleAuth(true)}>Sign Up</button>
@@ -137,97 +139,164 @@ function App() {
   }
 
   return (
-    <div className="page">
-      <div className="container">
-        <header className="hero">
-          <div className="hero-top">
-            <h1>Find Your People 🎓</h1>
-            <div className="user-menu">
-              <span className="user-badge">{user.email.split('@')[0]}</span>
-              <button className="logout-btn" onClick={handleLogout}>Log Out</button>
-            </div>
-          </div>
-          <p className="subtitle">Study sessions & project teams for students</p>
-        </header>
+    <div className="app-layout">
+      {/* Left Sidebar */}
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-icon">🎓</span>
+          <h2>Find your peeps</h2>
+        </div>
 
-        <div className="controls">
-          <div className="filters">
-            <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>✨ All</button>
-            <button className={filter === 'study' ? 'active' : ''} onClick={() => setFilter('study')}>📘 Study</button>
-            <button className={filter === 'project' ? 'active' : ''} onClick={() => setFilter('project')}>🚀 Project</button>
+        <nav className="nav-menu">
+          <button
+            className={`nav-item ${filter === 'all' ? 'active' : ''}`}
+            onClick={() => setFilter('all')}
+          >
+            <span className="icon">🏠</span> Dashboard (All)
+          </button>
+          <button
+            className={`nav-item ${filter === 'study' ? 'active' : ''}`}
+            onClick={() => setFilter('study')}
+          >
+            <span className="icon">📘</span> Study Groups
+          </button>
+          <button
+            className={`nav-item ${filter === 'project' ? 'active' : ''}`}
+            onClick={() => setFilter('project')}
+          >
+            <span className="icon">🚀</span> Project Teams
+          </button>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="user-profile">
+            <span className="user-dot"></span>
+            <span className="user-name">{user.email.split('@')[0]}</span>
           </div>
-          <button className="new-btn" onClick={() => setShowForm(!showForm)}>
-            {showForm ? '✕ Cancel' : '+ New Post'}
+          <button className="nav-logout" onClick={handleLogout}>
+            🚪 Logout
           </button>
         </div>
+      </aside>
 
-        <div className={`form-wrapper ${showForm ? 'open' : ''}`}>
-          <form className="post-form" onSubmit={handleSubmit}>
-            <div className="type-toggle">
-              <button type="button" className={type === 'study' ? 'active' : ''} onClick={() => setType('study')}>📘 Study Session</button>
-              <button type="button" className={type === 'project' ? 'active' : ''} onClick={() => setType('project')}>🚀 Project</button>
-            </div>
-            <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
-            <div className="form-row">
-              <input placeholder="Tags / Skills" value={tags} onChange={(e) => setTags(e.target.value)} />
-              <input placeholder="Timing / Deadline" value={timing} onChange={(e) => setTiming(e.target.value)} />
-            </div>
-            {formError && <p className="error">⚠ {formError}</p>}
-            <button type="submit" className="submit-btn">Post it 🚀</button>
-          </form>
-        </div>
+      {/* Main Content Area */}
+      <main className="main-content">
+        <header className="topbar">
+          <div>
+            <h1>Dashboard</h1>
+            <p className="topbar-sub">Find study partners and project collaborators</p>
+          </div>
+          <button className="action-btn" onClick={() => setShowModal(true)}>
+            + Add New Post
+          </button>
+        </header>
 
+        {/* Modal for Creating New Post */}
+        {showModal && (
+          <div className="modal-backdrop" onClick={() => setShowModal(false)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>Create New Listing</h3>
+                <button className="close-btn" onClick={() => setShowModal(false)}>✕</button>
+              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="type-toggle">
+                  <button
+                    type="button"
+                    className={type === 'study' ? 'active' : ''}
+                    onClick={() => setType('study')}
+                  >
+                    📘 Study Group
+                  </button>
+                  <button
+                    type="button"
+                    className={type === 'project' ? 'active' : ''}
+                    onClick={() => setType('project')}
+                  >
+                    🚀 Project Team
+                  </button>
+                </div>
+                <input
+                  placeholder="Title (e.g., DSA Unit 4 Prep)"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+                <textarea
+                  placeholder="Description..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+                <div className="form-row">
+                  <input
+                    placeholder="Tags (comma separated)"
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                  />
+                  <input
+                    placeholder="Timing / Deadline"
+                    value={timing}
+                    onChange={(e) => setTiming(e.target.value)}
+                  />
+                </div>
+                {formError && <p className="error">⚠ {formError}</p>}
+                <button type="submit" className="submit-btn" style={{ width: '100%', marginTop: '12px' }}>
+                  Post to Hub 🚀
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Content Status */}
         {loading && (
           <div className="status">
             <div className="spinner"></div>
-            <p>Loading posts...</p>
+            <p>Loading listings...</p>
           </div>
         )}
         {error && <p className="status error">⚠ {error}</p>}
         {!loading && !error && posts.length === 0 && (
           <div className="status empty">
             <p className="empty-emoji">📭</p>
-            <p>No posts yet. Be the first to create one!</p>
+            <p>No listings found in this category. Click "+ Add New Post" above to start one!</p>
           </div>
         )}
 
-        <div className="posts">
-          {posts.map((post, i) => (
-            <div key={post.id} className="post-card" style={{ animationDelay: `${i * 0.06}s` }}>
-              <div className="card-top">
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <span className={`badge ${post.type}`}>
-                    {post.type === 'study' ? '📘 Study' : '🚀 Project'}
-                  </span>
-                  {post.timing && <span className="timing-pill">⏰ {post.timing}</span>}
+        {/* Cards Grid */}
+        <div className="grid-container">
+          {posts.map((post) => (
+            <div key={post.id} className="grid-card">
+              <div className="grid-card-header">
+                <span className={`pill ${post.type}`}>
+                  {post.type === 'study' ? '📘 Study' : '🚀 Project'}
+                </span>
+                <button className="del-icon" onClick={() => handleDelete(post.id)}>🗑️</button>
+              </div>
+
+              <h3>{post.title}</h3>
+              <p className="grid-card-desc">{post.description}</p>
+
+              {post.tags && (
+                <div className="tags-row">
+                  {post.tags.split(',').map((tag, idx) => (
+                    <span key={idx} className="tag-item">#{tag.trim()}</span>
+                  ))}
                 </div>
-                <button className="delete-btn" onClick={() => handleDelete(post.id)}>🗑️</button>
-              </div>
-              <div className="card-content">
-                <h3>{post.title}</h3>
-                <p className="desc">{post.description}</p>
-                {post.tags && (
-                  <div className="tag-list">
-                    {post.tags.split(',').map((t, idx) => (
-                      <span key={idx} className="tag-chip">{t.trim()}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="card-footer">
-                <span className="interested">👥 {post.interested_count || 0} interested</span>
+              )}
+
+              <div className="grid-card-footer">
+                <span className="timing">{post.timing ? `⏰ ${post.timing}` : 'Flexible'}</span>
                 <button
-                  className={`join-btn ${joinedIds.includes(post.id) ? 'joined' : ''}`}
+                  className={`card-join-btn ${joinedIds.includes(post.id) ? 'joined' : ''}`}
                   onClick={() => handleJoin(post.id)}
                 >
-                  {joinedIds.includes(post.id) ? '✓ Joined' : 'Join'}
+                  {joinedIds.includes(post.id) ? '✓ Joined' : `Join (${post.interested_count || 0})`}
                 </button>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
