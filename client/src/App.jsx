@@ -3,7 +3,7 @@ import axios from 'axios';
 import { supabase } from './supabaseClient';
 import './App.css';
 
-const API = 'http://localhost:5050';
+const API = 'https://find-your-people-v2-production.up.railway.app';
 
 function App() {
   const [user, setUser] = useState(null);
