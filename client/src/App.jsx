@@ -23,6 +23,11 @@ function App() {
   const [timing, setTiming] = useState('');
   const [formError, setFormError] = useState('');
   const [joinedIds, setJoinedIds] = useState([]);
+  // Disable past dates and cap selection to 1 year ahead
+  const todayStr = new Date().toISOString().split('T')[0];
+  const maxDate = new Date();
+  maxDate.setFullYear(maxDate.getFullYear() + 1);
+  const maxStr = maxDate.toISOString().split('T')[0];
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,13 +62,37 @@ function App() {
       alert('Please enter both email and password.');
       return;
     }
+
     try {
-      const { error } = isSignUp
-        ? await supabase.auth.signUp({ email, password })
-        : await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+
+        if (data?.user?.identities?.length === 0) {
+          alert('An account with this email already exists. Please log in instead.');
+          return;
+        }
+        alert('Account created successfully!');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          if (
+            error.message.toLowerCase().includes('invalid login credentials') ||
+            error.message.toLowerCase().includes('user not found')
+          ) {
+            alert('No account found with this email, or the password is incorrect. Please sign up first.');
+          } else {
+            alert(error.message);
+          }
+          return;
+        }
+      }
     } catch (err) {
-      alert(err.message);
+      if (err.message.toLowerCase().includes('user already registered')) {
+        alert('An account with this email already exists. Please log in instead.');
+      } else {
+        alert(err.message);
+      }
     }
   };
 
@@ -79,7 +108,14 @@ function App() {
       return;
     }
     try {
-      await axios.post(`${API}/posts`, { type, title, description, tags, timing });
+      await axios.post(`${API}/posts`, {
+        type,
+        title,
+        description,
+        tags,
+        timing,
+        user_id: user.id
+      });
       setTitle('');
       setDescription('');
       setTags('');
@@ -94,21 +130,25 @@ function App() {
   const handleJoin = async (id) => {
     const name = user.email.split('@')[0];
     try {
-      await axios.post(`${API}/posts/${id}/join`, { user_name: name });
-      setJoinedIds((prev) => [...prev, id]);
+      await axios.post(`${API}/posts/${id}/join`, { 
+        user_name: name,
+        user_id: user.id
+      });
       fetchPosts();
     } catch (err) {
-      alert('Failed to join.');
+      alert(err.response?.data?.error || 'Failed to update join status.');
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this post?')) return;
     try {
-      await axios.delete(`${API}/posts/${id}`);
+      await axios.delete(`${API}/posts/${id}`, {
+        data: { user_id: user.id }
+      });
       fetchPosts();
     } catch (err) {
-      alert('Failed to delete post.');
+      alert(err.response?.data?.error || 'Failed to delete post.');
     }
   };
 
@@ -217,7 +257,7 @@ function App() {
                   </button>
                 </div>
                 <input
-                  placeholder="Title (e.g., DSA Unit 4 Prep)"
+                  placeholder="Title (e.g., OS Unit-5 Prep)"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -232,8 +272,12 @@ function App() {
                     value={tags}
                     onChange={(e) => setTags(e.target.value)}
                   />
+                  {/* Native Date Picker */}
                   <input
-                    placeholder="Timing / Deadline"
+                    type="date"
+                    className="date-input"
+                    min={todayStr}
+                    max={maxStr}
                     value={timing}
                     onChange={(e) => setTiming(e.target.value)}
                   />
@@ -263,38 +307,58 @@ function App() {
         )}
 
         {/* Cards Grid */}
+        {/* Cards Grid */}
         <div className="grid-container">
-          {posts.map((post) => (
-            <div key={post.id} className="grid-card">
-              <div className="grid-card-header">
-                <span className={`pill ${post.type}`}>
-                  {post.type === 'study' ? '📘 Study' : '🚀 Project'}
-                </span>
-                <button className="del-icon" onClick={() => handleDelete(post.id)}>🗑️</button>
-              </div>
+          {posts.map((post) => {
+            const userName = user.email.split('@')[0];
+            const isJoined = post.members?.some(
+              (m) => m.user_id === user.id || m.user_name === userName
+            );
+            const count = post.interested_count ?? (post.members ? post.members.length : 0);
 
-              <h3>{post.title}</h3>
-              <p className="grid-card-desc">{post.description}</p>
-
-              {post.tags && (
-                <div className="tags-row">
-                  {post.tags.split(',').map((tag, idx) => (
-                    <span key={idx} className="tag-item">#{tag.trim()}</span>
-                  ))}
+            return (
+              <div key={post.id} className="grid-card">
+                <div className="grid-card-header">
+                  <span className={`pill ${post.type}`}>
+                    {post.type === 'study' ? '📘 Study' : '🚀 Project'}
+                  </span>
+                  {user && post.user_id === user.id && (
+                    <button className="del-icon" onClick={() => handleDelete(post.id)}>🗑️</button>
+                  )}
                 </div>
-              )}
 
-              <div className="grid-card-footer">
-                <span className="timing">{post.timing ? `⏰ ${post.timing}` : 'Flexible'}</span>
-                <button
-                  className={`card-join-btn ${joinedIds.includes(post.id) ? 'joined' : ''}`}
-                  onClick={() => handleJoin(post.id)}
-                >
-                  {joinedIds.includes(post.id) ? '✓ Joined' : `Join (${post.interested_count || 0})`}
-                </button>
+                <h3>{post.title}</h3>
+                <p className="grid-card-desc">{post.description}</p>
+
+                {post.tags && (
+                  <div className="tags-row">
+                    {post.tags.split(',').map((tag, idx) => (
+                      <span key={idx} className="tag-item">#{tag.trim()}</span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid-card-footer">
+                  <div className="meta-left">
+                    <span className="timing">
+                      📅 {post.timing ? post.timing : 'Flexible'}
+                    </span>
+                    <span className="member-pill">
+                      👥 {count} {count === 1 ? 'member' : 'members'}
+                    </span>
+                  </div>
+
+                  <button
+                    className={`card-join-btn ${isJoined ? 'joined' : ''}`}
+                   
+                    onClick={() => handleJoin(post.id)}
+                  >
+                    {isJoined ? '✓ Joined' : 'Join +'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </main>
     </div>

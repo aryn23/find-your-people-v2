@@ -454,3 +454,28 @@ body {
   width: 100%;
   margin-bottom: 8px;
 }
+
+/* Meta section inside card footer */
+.meta-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.member-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: #e2f952;
+  display: inline-block;
+}
+
+/* Date input with dark styling */
+input[type="date"] {
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
